@@ -1,95 +1,117 @@
-# Internet Archive plugin for Kino
+# Juan Embeds, plugin para Kino
 
-A plugin for the Kino video app that brings the public-domain films and classic TV of
-[archive.org](https://archive.org) into Kino's search, Home and player. It is the reference example
-for plugin authors: one manifest, one JavaScript file, no build step.
+Un plugin para la app de video Kino que reproduce el stream de cualquier reproductor incrustado
+(embed) cuyo enlace agregues en Ajustes. Cada embed se muestra como un canal con el nombre que le
+pongas, en el Inicio de Kino, en la pestaña En vivo o en las dos. Es un solo manifiesto y un solo
+archivo de JavaScript, sin paso de compilación.
 
-## What it does
+## Qué hace
 
-| Capability | How |
+| Capacidad | Cómo |
 | --- | --- |
-| `search` | Titles in both the `feature_films` (movies) and `classic_tv` (series) collections, up to 25 from each. Besides what was typed (`q`), it asks for the `originalTitle` and up to two of the `altTitles` Kino sends (at most four distinct titles, each cut to its head with `kino.rank.shortQuery`, all asked at once), so a Spanish title finds a film archive.org lists under its original one ("Asalto y robo de un tren" finds *The Great Train Robbery*). An item found more than once is listed once; the rest are ranked with `kino.rank.sortBySimilarity` against every title, near-misses are dropped with `kino.rank.filterRelevant` (an item whose identifier is the title itself always stays), and when Kino knows the `year`, what is from that year (±1) comes first among equals. The `type` Kino sends is only an ordering preference (the collection that matches it comes first), never a filter, because TMDB's movie/tv split does not line up with archive.org's: public-domain films and classic TV are mixed, and a title can exist as both. Characters and words that are query syntax to archive.org (`/`, `-`, `&`, `AND`, `OR`, `NOT`) are cleaned out of what the person typed. |
-| `home` | Three rows: public-domain films, classic TV and classic animation, by downloads, 30 titles each, after the person's own rows if they set addresses (see below). Each row carries a `ref`, so Kino ends it with a "Ver más" card. |
-| `browse` | "Ver más" on a Home row: the same query as the row, 50 titles per page, the page number as the cursor (`"2"`, `"3"`, …). |
-| `episodes` | The video files of an item, in natural order. Files named `S01E02` get that season and number; otherwise they are numbered 1, 2, 3 in order. |
-| `resolve` | The file to play: the item's own mp4/m4v/webm, or the best mp4 archive.org derived from the original (`.avi`, `.mpg`, `.mkv`, `.divx`...). Sibling `.vtt`/`.srt` files become subtitles. |
-| `download` | Declarative, no code: Kino offers the titles for offline viewing on phones and saves what `resolve` returns. That is always one progressive file (mp4, m4v or webm, with its `mime`), never an HLS/DASH manifest, so every title that plays can be downloaded. Installing or updating to a version with it shows "Puede descargar videos para verlos sin conexión". |
+| `home` | Una fila "En vivo" con un canal por cada embed de la lista, en el orden en que los agregaste. Si eliges "Solo en En vivo", no aporta filas. |
+| `channels` | La pestaña En vivo de Kino: una categoría "Embeds" con un canal por embed, numerados según su posición en la lista. Si eliges "Solo en Inicio", no aporta categorías. |
+| `resolve` | Abre el enlace del embed en el **navegador oculto** de Kino (`kino.browser.capture`), deja que la página ejecute sus propios scripts y devuelve la primera petición de video que hizo (los manifiestos HLS/DASH van antes que los MP4), con los mismos headers y cookies que llevaba la página. |
 
-Two things it does not try to be clever about, so do not copy them as intended behavior:
-an item found inside a collection or in the built-in rows that bundles several films is exposed as
-a single `movie`, and `resolve` plays its first video in natural name order (put its own address in
-Configurar to get one card per video); and episodes numbered `S01E00` (a pilot, a special)
-are dropped by Kino, whose episode numbers start at 1.
+El `ref` de cada canal es su `id`, y `resolve` busca el enlace en tus ajustes en el momento de
+reproducir, así que un cambio en la lista se aplica sin reinstalar nada.
 
-## Your own addresses (Configurar)
+## Tus embeds (Configurar)
 
-Under Ajustes > Plugins > Internet Archive > Configurar the person can fill up to six archive.org
-addresses (Dirección 1 to 6), each with an optional category name (Categoría 1 to 6):
+En Ajustes ▸ Plugins ▸ Juan Embeds ▸ Configurar:
 
-| Address | What it lists |
+| Ajuste | Para qué sirve |
 | --- | --- |
-| `https://archive.org/details/<collection>` | the videos of that collection |
-| `https://archive.org/details/<item>` | that item (one with no collection filed under it): a single video is one card; an item with several videos is one card per video (`<item>~1`, `<item>~2`, ...), each playing its own file, and a search also looks at their titles |
-| `https://archive.org/search?query=...` | the videos a search returns (movies only) |
+| **Embeds** | Lista de hasta 30 entradas, con el botón "Agregar". Cada entrada tiene **Nombre** (opcional) y **Enlace del embed** (obligatorio). Sin nombre, el canal se llama "Embed 2", "Embed 3", etc., según su posición. |
+| **Dónde mostrar los canales** | "Solo en Inicio", "Solo en En vivo" o "En los dos" (por defecto). |
 
-Each address becomes a Home row of its own, before the three built-in ones, newest additions first
-(`addeddate desc`), with the same "Ver más" paging. Addresses that share a category name (capitals
-do not matter; the row keeps the first spelling) are merged into one row for that name, asked of
-archive.org as a single `OR` query. A category with no valid address behind it makes no row. What is
-inside the addresses is also searched (by every title asked, in one request), and comes first in Kino's search results, unranked. Anything that is not
-archive.org, or not one of the three forms above, is ignored: the plugin only ever talks to
-archive.org. With no addresses the plugin behaves exactly as before.
+Mientras la lista esté vacía, Kino muestra "Falta configurar" y no llama al plugin.
 
-These are twelve plain settings (`url1`/`cat1` ... `url6`/`cat6`), so the manifest stays at apiVersion 3 and installs
-on every Kino from 0.9.43 on. Versions 1.3.0 to 1.4.1 used one `list` setting (`sources`, apiVersion 4) that Kino
-0.9.43 could not install; addresses saved in that list are not carried over and have to be typed again.
+Detalles:
 
-## Hosts, and why `*.archive.org`
+- **Ids estables.** El `id` de cada canal sale de una huella de su enlace, no de su posición, así que
+  reordenar la lista no rompe favoritos ni recientes. Si pones el mismo enlace dos veces, el
+  segundo recibe un sufijo (`-2`) para que Kino no lo descarte por repetido.
+- **Entradas vacías.** Una entrada sin enlace se ignora.
+- **Solo `https`.** La captura exige una página pública y `https`. Un enlace `http` aparece en la lista
+  pero falla al reproducir con "no disponible".
+- Cambiar cualquier ajuste cierra el sandbox del plugin y borra sus filas de Inicio guardadas. Kino
+  guarda las categorías y canales de En vivo durante una hora, así que un cambio de "dónde mostrar"
+  puede tardar en verse allí.
 
-The manifest declares `archive.org` and `*.archive.org`, and the plugin can only talk to those.
-`https://archive.org/download/...` answers with a redirect to a storage node such as
-`dn720705.ca.archive.org`, and a wildcard does not cover its own bare domain (`*.archive.org` does
-not match `archive.org`), so both are listed. Kino shows the list to the person before installing.
+## Permisos y hosts
 
-## Install it in Kino
+El manifiesto declara `"hosts": []`: los enlaces que escribe la persona cuentan como los únicos hosts
+a los que llega el plugin. Además declara:
 
-In Kino open Ajustes > Plugins and type the address of this repository:
+| Campo | Para qué |
+| --- | --- |
+| `"browser": true` | Permite abrir páginas ocultas con `kino.browser.capture` (apiVersion 6, Kino 0.9.50 o más nuevo). |
+| `"streamHosts": "any"` | El video que encuentra la página puede estar en cualquier servidor público. |
+| `"liveStreamHosts": "any"` | Lo mismo para el stream de un canal en vivo (necesita la capacidad `channels`). |
+
+Por eso Kino muestra **en rojo** varias líneas antes de instalar (por ejemplo, que puede abrir
+páginas web ocultas para encontrar el video y reproducir video desde cualquier servidor), y vuelve a
+pedir aprobación en una actualización que agregue alguna. La página inicial que abre el plugin es siempre
+la que tú escribiste; después puede cargar scripts y video desde cualquier servidor público, pero nunca
+desde la red de tu casa.
+
+## Límites
+
+Lo que el navegador oculto no puede hacer, según la guía de Kino:
+
+- **No resuelve captchas.** Si la página pide "confirma que eres humano" (CAPTCHA, Turnstile,
+  hCaptcha…), la captura termina de inmediato con `blocked` y el canal no reproduce.
+- **No reproduce lo cifrado dentro de la página.** El plugin entrega la URL del stream al reproductor de
+  Kino. Si el embed descifra el video con su propio código (por ejemplo, con WASM) y no solo firma la
+  URL, el reproductor de Kino recibirá datos que no sabe abrir.
+- **No sirve para DRM, ni para sitios que piden login ajeno.** Un plugin solo puede llegar a lo que
+  la persona igual podría ver.
+- **Una sola página oculta a la vez** en toda la app. Cada captura espera hasta 22 s, y la llamada
+  completa a `resolve` tiene un máximo de 75 s.
+- Algunas cajas de TV no tienen WebView (`browser_unavailable`), y el kit de pruebas de Node tampoco: la
+  captura solo se puede probar en un celular con Kino.
+- Si el stream se corta, Kino vuelve a llamar a `resolve` a los 2, 4 y 8 s antes de rendirse.
+
+Cada embed puede comportarse distinto: unos pueden funcionar y otros no.
+
+## Instalar en Kino
+
+En Kino abre Ajustes ▸ Plugins y escribe la dirección de este repositorio:
 
 ```
-kinotvapp/kino-plugin-archive
+JuanDEVYT/<nombre-de-este-repositorio>
 ```
 
-Kino reads `kino-plugin.json` and `plugin.js` from the repository root, shows the hosts the plugin
-will reach and asks for approval before anything runs.
+Kino lee `kino-plugin.json` y `plugin.js` de la raíz del repositorio, muestra lo que el plugin podrá
+hacer y pide aprobación antes de ejecutar nada. Después, entra a Configurar y agrega tus embeds.
 
-## Write your own plugin
+El ícono (`icono.png`) tiene que estar en la raíz, ser un PNG cuadrado de máximo 128 KB y estar
+referenciado en el manifiesto como `"icon": "icono.png"`, sin `./` al principio.
 
-This repository is also the starting point for your own plugin:
+## Desarrollo
 
-- The same guide is online, with a page per topic: <https://kinotvapp.github.io/kino-plugins/> ([first plugin](https://kinotvapp.github.io/kino-plugins/first-plugin/), [manifest](https://kinotvapp.github.io/kino-plugins/manifest/), [contract](https://kinotvapp.github.io/kino-plugins/contract/), [example plugins](https://kinotvapp.github.io/kino-plugins/examples/)).
-- [`GUIDE.md`](GUIDE.md) is the authoring guide: file layout, manifest and settings, the five
-  functions your code can export, the `kino` API, every limit, the quirks of the JavaScript engine
-  and five cookbook recipes.
-- [`contract.json`](contract.json) holds every number and rule Kino enforces, and
-  [`kino.d.ts`](kino.d.ts) declares the `kino` API for your editor.
-- [`sdk/`](sdk) lets you run and test a plugin on your computer with Node 18 or newer, using the same
-  `kino` API as the app and checking what you return the way Kino does:
+La documentación oficial está en <https://kinotvapp.github.io/kino-plugins/>. Las páginas que más
+importan para este plugin:
+
+- [Manifiesto](https://kinotvapp.github.io/kino-plugins/manifest/): campos, ajustes de tipo `list` y `select`, `hosts`.
+- [Contrato](https://kinotvapp.github.io/kino-plugins/contract/): lo que devuelven `home`, `resolve` y el `Stream`.
+- [Navegador oculto](https://kinotvapp.github.io/kino-plugins/browser/): `kino.browser.capture`, tiempos y errores (`blocked`, `timeout`, `busy`, `browser_unavailable`).
+- [Canales en vivo](https://kinotvapp.github.io/kino-plugins/live-channels/): `liveCategories`, `liveChannels` y `liveStreamHosts`.
+
+Para validar el manifiesto en tu computador (Node 18 o más nuevo, con la carpeta `sdk/` de la
+plantilla de la que partiste):
 
 ```
-node sdk/run.mjs ./plugin.js search "metropolis"
-node sdk/run.mjs ./plugin.js home
-node sdk/run.mjs ./plugin.js browse films 2
 node sdk/validate.mjs .
-node sdk/init.mjs ../my-plugin --host example.com
 ```
 
-Copy `plugin.js` and `kino-plugin.json`, change them, and publish your repository the same way.
+Cada cambio en el plugin necesita subir `version` en `kino-plugin.json`: Kino solo instala una
+actualización si el número es mayor. No cambies el `id` (`juan-embeds`) cuando ya haya gente que lo
+instaló, porque Kino lo trataría como otro plugin.
 
-## License
+## Sobre el contenido
 
-The code in this repository is licensed under the [Apache License 2.0](LICENSE). Copyright 2026 kinotvapp.
-
-## License note
-
-What this plugin plays is not ours to license: the videos are public domain or carry the license
-their uploader chose on archive.org. Check an item's page before you reuse or redistribute it.
+Este plugin no aloja ni distribuye video: solo abre los enlaces que tú escribes y entrega al
+reproductor de Kino lo que esa página pide. Lo que se reproduzca depende de cada fuente y de los
+derechos que tengas sobre ella. Úsalo solo con embeds a los que tengas derecho a acceder.
