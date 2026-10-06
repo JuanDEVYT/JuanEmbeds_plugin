@@ -1,7 +1,7 @@
 {
   "id": "juan-embeds",
   "name": "Juan Embeds",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "apiVersion": 6,
   "entry": "plugin.js",
   "icon": "icono.png",
@@ -10,20 +10,56 @@
   "browser": true,
   "streamHosts": "any",
   "liveStreamHosts": "any",
-  "hosts": [],
-  "capabilities": ["home", "resolve", "channels"],
+  "hosts": [
+    "bintv-sources.pages.dev"
+  ],
+  "capabilities": [
+    "home",
+    "resolve",
+    "channels"
+  ],
   "settings": [
-    { "key": "embeds", "label": "Embeds", "type": "list", "required": true, "max": 30,
+    {
+      "key": "embeds",
+      "label": "Embeds",
+      "type": "list",
+      "required": true,
+      "max": 30,
       "fields": [
-        { "key": "nombre", "label": "Nombre", "type": "text", "hint": "Ej: Canal 1" },
-        { "key": "url", "label": "Enlace del embed", "type": "url", "required": true,
-          "hint": "https://sitio.com/reproductor?id=..." }
-      ] },
-    { "key": "donde", "label": "Dónde mostrar los canales", "type": "select", "default": "ambos",
+        {
+          "key": "nombre",
+          "label": "Nombre",
+          "type": "text",
+          "hint": "Ej: Canal 1"
+        },
+        {
+          "key": "url",
+          "label": "Enlace del embed",
+          "type": "url",
+          "required": true,
+          "hint": "https://sitio.com/reproductor?id=..."
+        }
+      ]
+    },
+    {
+      "key": "donde",
+      "label": "Dónde mostrar los canales",
+      "type": "select",
+      "default": "ambos",
       "options": [
-        { "value": "home", "label": "Solo en Inicio" },
-        { "value": "live", "label": "Solo en En vivo" },
-        { "value": "ambos", "label": "En los dos" }
-      ] }
+        {
+          "value": "home",
+          "label": "Solo en Inicio"
+        },
+        {
+          "value": "live",
+          "label": "Solo en En vivo"
+        },
+        {
+          "value": "ambos",
+          "label": "En los dos"
+        }
+      ]
+    }
   ]
 }

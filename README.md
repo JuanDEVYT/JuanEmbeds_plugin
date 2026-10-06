@@ -41,8 +41,9 @@ Detalles:
 
 ## Permisos y hosts
 
-El manifiesto declara `"hosts": []`: los enlaces que escribe la persona cuentan como los únicos hosts
-a los que llega el plugin. Además declara:
+El manifiesto declara un solo host de ejemplo (`bintv-sources.pages.dev`), porque Kino no instala un plugin
+con `"hosts": []` salvo que tenga un ajuste de tipo `url` suelto (una `list` con campos `url` no cuenta para ese
+chequeo). Los enlaces que escribe la persona en la lista son los que el plugin abre de verdad. Además declara:
 
 | Campo | Para qué |
 | --- | --- |
